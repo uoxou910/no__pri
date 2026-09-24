@@ -1230,14 +1230,24 @@ html,body{
 body .header{
   background:linear-gradient(100deg,var(--character-a) 0%,var(--character-mid) 48%,var(--character-b) 100%)!important;
 }
+/* サイトAと同じ白いタブ。選択中だけ淡いキャラ色を使用 */
 body .tab.active{
-  background:linear-gradient(110deg,var(--character-menu-a),var(--character-menu-b))!important;
-  border-color:transparent!important;
-  color:#603c51!important;
-  transition:background .75s ease,color .75s ease,border-color .75s ease!important;
+  background:color-mix(in srgb,var(--character-menu-a) 18%,white)!important;
+  border-color:color-mix(in srgb,var(--character-menu-a) 38%,white)!important;
+  color:#8c557d!important;
+  box-shadow:0 4px 13px rgba(204,135,170,.10)!important;
+  transition:background-color .75s ease,color .75s ease,border-color .75s ease!important;
 }
 body .tabs{
   border-color:color-mix(in srgb,var(--character-menu-a) 30%,white)!important;
   transition:border-color .75s ease!important;
 }
 @media(prefers-reduced-motion:reduce){:root{transition:none!important}}
+
+/* 非選択タブはサイトA同様、キャラ色を付けない */
+body .tab:not(.active){background:#fff!important;color:#817482!important;border-color:#ece6ed!important;box-shadow:none!important;}
+@media(max-width:699px){
+  body .tab:not(.active){background:transparent!important;border:0!important;}
+  body .tab.active{border:0!important;box-shadow:none!important;}
+  body .tabs{background:#fff!important;border-color:#eee8ef!important;}
+}
