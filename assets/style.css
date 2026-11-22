@@ -955,3 +955,21 @@ body[data-page="edit"] .site-c-replace-image input[type="file"] {
 @media(max-width:540px){
  body[data-page="edit"] .site-c-replace-image {align-items:stretch;flex-direction:column;}
 }
+
+/* Admin cards: keep actions aligned to the two-line outfit caption baseline.
+   Preserve the complete text if the caption happens to exceed two lines. */
+body[data-page="edit"] .admin-card-grid .admin-card {
+ display:flex;
+ flex-direction:column;
+}
+body[data-page="edit"] .admin-card-grid .admin-card-body {
+ display:flex;
+ flex:1 1 auto;
+ flex-direction:column;
+}
+body[data-page="edit"] .admin-card-grid .admin-sub {
+ min-height:3.1em; /* Two lines at the existing 1.55 line-height. */
+}
+body[data-page="edit"] .admin-card-grid .admin-card-body > .row {
+ margin-top:auto;
+}
