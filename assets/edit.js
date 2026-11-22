@@ -58,7 +58,6 @@ function clearAdminSession(){
  tokenIssuedAt=0;
  sessionStorage.removeItem(adminTabTokenKey);
  sessionStorage.removeItem(adminTabPasswordKey);
- sessionStorage.removeItem('freca_admin_password');
 }
 async function loginForSession(password,includeAdmin=false){
  const result=await api('login',{password,includeAdmin});
@@ -98,7 +97,7 @@ async function adminApi(action,payload={}){
  }
 }
 async function restoreAdminTab(){
- const password=sessionStorage.getItem(adminTabPasswordKey)||sessionStorage.getItem('freca_admin_password');
+ const password=sessionStorage.getItem(adminTabPasswordKey);
  const savedToken=sessionStorage.getItem(adminTabTokenKey);
  if(!password&&!savedToken){loginScreen();return;}
  try{
@@ -170,7 +169,6 @@ $('#login-form').onsubmit=async e=>{e.preventDefault();const pwd=$('#password').
   db=S.sanitize(adminData);savedSnapshot=S.sanitize(db);
   tokenIssuedAt=Date.now();
   sessionStorage.setItem(adminTabPasswordKey,pwd);
-  sessionStorage.setItem('freca_admin_password',pwd);
   sessionStorage.setItem(adminTabTokenKey,token);
   dashboard();
  }catch(err){clearAdminSession();errorLabel.textContent=err.message;}
