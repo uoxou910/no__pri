@@ -69,7 +69,7 @@ function normalizeCard(card){
   image_url:String(card.image_url||''),visible:card.visible!==false};
 }
 function cardArray(items){return (Array.isArray(items)?items:[]).map(normalizeCard).filter(Boolean);}
-function base(){return {cards:[],colors:readColors(),lastCardsUpdated:'',lastSavedAt:''};}
+function base(){return {cards:[],owned:[],plans:[],colors:readColors(),lastCardsUpdated:'',lastSavedAt:''};}
 function sanitize(obj){
  const state=base();
  if(obj&&typeof obj==='object'){
