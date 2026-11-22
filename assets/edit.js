@@ -177,7 +177,7 @@ $('#login-form').onsubmit=async e=>{e.preventDefault();const pwd=$('#password').
 }
 function dashboard(){
  S.theme('',db.colors);
- $('#app').innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner"><strong class="app-title" id="admin-title">フレカ管理</strong><div class="header-actions"><span class="header-date" id="last-saved" aria-live="off"></span><button type="button" class="btn primary site-d-header-add" id="site-d-header-add">＋ フレカを追加</button><button class="hamburger" id="menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false"><svg class="hamburger-lines" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header><div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button data-menu-screen="cards">フレカ管理</button><button type="button" id="bulk-toggle">一括削除</button><button data-menu-screen="colors">カラー設定</button><button id="logout">ログアウト</button></nav><button class="drawer-close" id="drawer-close" type="button" aria-label="メニューを閉じる" aria-hidden="true">×</button><div class="admin-shell"><div id="admin-content" class="animated-content"></div></div><div id="dialog-host"></div><div class="site-c-bulk-bar hidden" id="site-c-bulk-bar"><span id="site-c-bulk-count">0件選択中</span><button type="button" id="site-c-bulk-exec" class="btn danger">選択したカードを削除</button><button type="button" id="site-c-bulk-cancel" class="btn">キャンセル</button></div>`;
+ $('#app').innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner"><strong class="app-title" id="admin-title">フレカ管理</strong><div class="header-actions"><span class="header-date" id="last-saved" aria-live="off"></span><button type="button" class="btn primary site-d-header-add" id="site-d-header-add">＋ フレカを追加</button><button class="hamburger" id="menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false"><svg class="hamburger-lines" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header><div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button data-menu-screen="cards">フレカ管理</button><button data-menu-screen="colors">カラー設定</button><button id="logout">ログアウト</button></nav><button class="drawer-close" id="drawer-close" type="button" aria-label="メニューを閉じる" aria-hidden="true">×</button><div class="admin-shell"><div id="admin-content" class="animated-content"></div></div><div id="dialog-host"></div><div class="site-c-bulk-bar hidden" id="site-c-bulk-bar"><span id="site-c-bulk-count">0件選択中</span><button type="button" id="site-c-bulk-exec" class="btn danger">選択したカードを削除</button><button type="button" id="site-c-bulk-cancel" class="btn">キャンセル</button></div>`;
  const menuBtn=$('#menu-toggle'),drawerClose=$('#drawer-close');
  updateLastSaved();
  const positionClose=()=>{const r=menuBtn.getBoundingClientRect();Object.assign(drawerClose.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});};
@@ -194,7 +194,6 @@ function dashboard(){
  $('#drawer-close').onclick=()=>toggle(false);
  $$('[data-menu-screen]').forEach(b=>b.onclick=()=>{const screen=b.dataset.menuScreen;mode=screen==='cards'?'cards':'memo';memoTab=screen==='cards'?memoTab:screen;filter='';q='';toggle(false);draw();});
  $('#site-d-header-add').onclick=()=>{if(mode==='cards')openCardForm();};
- $('#bulk-toggle').onclick=()=>{mode='cards';filter='';q='';bulkMode=!bulkMode;selected.clear();toggle(false);draw();};
  $('#site-c-bulk-exec').onclick=removeSelected;
  $('#site-c-bulk-cancel').onclick=()=>{bulkMode=false;selected.clear();draw();};
  $('#logout').onclick=()=>{if(pendingWrites){toast('保存処理が完了してからログアウトしてください');return;}bulkMode=false;selected.clear();clearAdminSession();loginScreen();};
@@ -273,7 +272,6 @@ function draw(preserveFilter=false){
  $('#admin-title').textContent=mode==='cards'?'フレカ管理':'カラー設定';
  $('#site-d-header-add')?.classList.toggle('hidden',mode!=='cards');
  $$('[data-menu-screen]').forEach(b=>b.classList.toggle('selected',b.dataset.menuScreen===(mode==='cards'?'cards':'colors')));
- $('#bulk-toggle')?.classList.toggle('selected',bulkMode);
  setAdminContent(mode==='cards'?renderCards():renderColors(),preserveFilter);
  const bulkBar=$('#site-c-bulk-bar');
  if(bulkBar){
