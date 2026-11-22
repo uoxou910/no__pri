@@ -179,7 +179,7 @@ $('#login-form').onsubmit=async e=>{e.preventDefault();const pwd=$('#password').
 }
 function dashboard(){
  S.theme('',db.colors);
- $('#app').innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner"><strong class="app-title" id="admin-title">フレカ管理</strong><div class="header-actions"><span class="header-date" id="last-saved" aria-live="off"></span><button type="button" class="btn primary site-d-header-add" id="site-d-header-add">＋ フレカを追加</button><button class="hamburger" id="menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false"><svg class="hamburger-lines" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header><div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button data-menu-screen="cards">フレカ管理</button><button type="button" id="bulk-toggle">一括削除</button><button data-menu-screen="colors">カラー設定</button><button id="logout">ログアウト</button></nav><button class="drawer-close" id="drawer-close" type="button" aria-label="メニューを閉じる" aria-hidden="true">×</button><div class="admin-shell"><div id="admin-content" class="animated-content"></div></div><div id="dialog-host"></div>`;
+ $('#app').innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner"><strong class="app-title" id="admin-title">フレカ管理</strong><div class="header-actions"><span class="header-date" id="last-saved" aria-live="off"></span><button type="button" class="btn primary site-d-header-add" id="site-d-header-add">＋ フレカを追加</button><button class="hamburger" id="menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false"><svg class="hamburger-lines" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header><div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button data-menu-screen="cards">フレカ管理</button><button type="button" id="bulk-toggle">一括削除</button><button data-menu-screen="colors">カラー設定</button><button id="logout">ログアウト</button></nav><button class="drawer-close" id="drawer-close" type="button" aria-label="メニューを閉じる" aria-hidden="true">×</button><div class="admin-shell"><div id="admin-content" class="animated-content"></div></div><div id="dialog-host"></div><div class="site-c-bulk-bar hidden" id="site-c-bulk-bar"><span id="site-c-bulk-count">0件選択中</span><button type="button" id="site-c-bulk-exec" class="btn danger">選択したカードを削除</button><button type="button" id="site-c-bulk-cancel" class="btn">キャンセル</button></div>`;
  const menuBtn=$('#menu-toggle'),drawerClose=$('#drawer-close');
  updateLastSaved();
  const positionClose=()=>{const r=menuBtn.getBoundingClientRect();Object.assign(drawerClose.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});};
@@ -197,6 +197,8 @@ function dashboard(){
  $$('[data-menu-screen]').forEach(b=>b.onclick=()=>{const screen=b.dataset.menuScreen;mode=screen==='cards'?'cards':'memo';memoTab=screen==='cards'?memoTab:screen;filter='';q='';toggle(false);draw();});
  $('#site-d-header-add').onclick=()=>{if(mode==='cards')openCardForm();};
  $('#bulk-toggle').onclick=()=>{mode='cards';filter='';q='';bulkMode=!bulkMode;selected.clear();toggle(false);draw();};
+ $('#site-c-bulk-exec').onclick=removeSelected;
+ $('#site-c-bulk-cancel').onclick=()=>{bulkMode=false;selected.clear();draw();};
  $('#logout').onclick=()=>{if(pendingWrites){toast('保存処理が完了してからログアウトしてください');return;}bulkMode=false;selected.clear();clearAdminSession();loginScreen();};
  document.addEventListener('keydown',ev=>{if(ev.key==='Escape')toggle(false);});
  draw();
@@ -214,38 +216,17 @@ function updateLastSaved(){
 }
 // Writes are sent in the order the user made them. The UI is updated before awaiting GAS.
 // On failure, cancel pending writes and restore the last confirmed state.
-function save(action='save',payload={}){
- const snapshot=S.sanitize(db),sequence=++writeSeq;
- pendingWrites++;updateLastSaved();
- const task=saveTail.then(async()=>{
-  if(sequence<=discardThrough)return false;
-  try{
-   let result;
-   if(action!=='save'&&!S.isDemo()){
-    try{result=await adminApi(action,payload);}
-    catch(error){
-     // Keep compatibility with the original GAS until the new backend is deployed.
-     if(!/invalid action/i.test(error.message))throw error;
-     result=await adminApi('save',{data:snapshot});
-    }
-   }else result=await adminApi('save',{data:snapshot});
-   savedSnapshot=S.sanitize({...snapshot,lastSavedAt:result?.savedAt||savedSnapshot.lastSavedAt});
-   db.lastSavedAt=savedSnapshot.lastSavedAt;
-   updateLastSaved();
-   return true;
-  }catch(error){
-   discardThrough=writeSeq;
-   db=S.sanitize(savedSnapshot);
-   draw();
-   toast('保存失敗: '+error.message+'（変更を取り消しました）');
-   if(!S.isDemo()&&/認証|期限|ログイン|token/i.test(error.message)){
-    clearAdminSession();loginScreen();
-   }
-   return false;
-  }finally{pendingWrites--;updateLastSaved();}
- });
- saveTail=task.then(()=>undefined);
- return task;
+// Site C's GAS has no whole-database save action. Only color settings are local.
+async function save(){
+ try{
+  db.colors=S.saveColors(db.colors);
+  db.lastSavedAt=new Date().toISOString();
+  updateLastSaved();
+  return true;
+ }catch(error){
+  toast('カラー設定を保存できませんでした：'+error.message);
+  return false;
+ }
 }
 function filterbar(placeholder){return `<label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="search" type="search" placeholder="${esc(placeholder)}" autocomplete="off" value="${esc(q)}"></label>`;}
 function charOptions(){return `<div class="character-filter" id="filter-row" aria-label="キャラクターを絞り込み"><button class="filter-pill filter-all ${!filter?'active':''}" data-filter="" style="${S.characterStyle('すべて',db.colors)}">すべて</button><div class="filter-scroll" tabindex="0" aria-label="左右にスクロールしてキャラクターを選択">${chars.map(c=>`<button class="filter-pill ${filter===c?'active':''}" data-filter="${esc(c)}" style="${S.characterStyle(c,db.colors)}">${esc(c)}</button>`).join('')}</div></div>`;}
@@ -287,11 +268,19 @@ function setAdminContent(html,preserveFilter){
   button.style.cssText=S.characterStyle(button.dataset.filter||'すべて',db.colors);
  });
 }
-function draw(preserveFilter=false){if(!token)return;S.theme(filter,db.colors);$('#admin-title').textContent=mode==='cards'?'フレカ管理':memoTab==='colors'?'カラー設定':'フレカ印刷メモ';
+function draw(preserveFilter=false){
+ if(!token)return;
+ S.theme(filter,db.colors);
+ $('#admin-title').textContent=mode==='cards'?'フレカ管理':'カラー設定';
  $('#site-d-header-add')?.classList.toggle('hidden',mode!=='cards');
- $$('[data-menu-screen]').forEach(b=>b.classList.toggle('selected',b.dataset.menuScreen===(mode==='cards'?'cards':memoTab==='colors'?'colors':'plans')));
- setAdminContent(mode==='cards'?renderCards():`${memoTab==='colors'?'':`<div class="sub-tabs"><button class="sub-tab ${memoTab==='owned'?'active':''}" data-tab="owned">所持コーデ</button><button class="sub-tab ${memoTab==='plans'?'active':''}" data-tab="plans">印刷予定</button></div>`}${memoTab==='owned'?renderOwned():memoTab==='plans'?renderPlans():renderColors()}`,preserveFilter);
- $$('[data-tab]').forEach(b=>b.onclick=()=>{memoTab=b.dataset.tab;filter='';q='';draw();});
+ $$('[data-menu-screen]').forEach(b=>b.classList.toggle('selected',b.dataset.menuScreen===(mode==='cards'?'cards':'colors')));
+ $('#bulk-toggle')?.classList.toggle('selected',bulkMode);
+ setAdminContent(mode==='cards'?renderCards():renderColors(),preserveFilter);
+ const bulkBar=$('#site-c-bulk-bar');
+ if(bulkBar){
+  bulkBar.classList.toggle('hidden',!bulkMode||mode!=='cards');
+  $('#site-c-bulk-count').textContent=selected.size+'件選択中';
+ }
  const input=$('#search');if(input){
    let composing=false;
    const commit=()=>{const val=input.value;if(q===val)return;q=val;const caret=input.selectionStart??val.length;draw();const fresh=$('#search');if(fresh){fresh.focus({preventScroll:true});try{fresh.setSelectionRange(caret,caret)}catch(_){}}};
@@ -304,14 +293,15 @@ function draw(preserveFilter=false){if(!token)return;S.theme(filter,db.colors);$
  $$('[data-edit-group]').forEach(b=>b.onclick=()=>openOwnershipForm(b.dataset.editGroup));
  $$('[data-remove-group]').forEach(b=>b.onclick=()=>removeOwnershipGroup(b.dataset.removeGroup));
  $$('[data-edit]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.edit.split(':');openForm(type,id);});
- $$('[data-remove]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.remove.split(':');remove(type,id);});
+ $('[data-remove]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.remove.split(':');remove(type,id);});
+ $('[data-visibility]').forEach(b=>b.onclick=()=>toggleVisibility(b.dataset.visibility));
  $$('[data-check]').forEach(b=>b.onchange=()=>{
   const x=db.plans.find(x=>x.id===b.dataset.check);if(!x)return;
   x.done=b.checked;
   b.closest('.plan-item')?.classList.add('just-checked');
   save('setPlanDone',{id:x.id,done:x.done});
  });
- $$('[data-view-image]').forEach(b=>b.onclick=()=>{const x=db.cards.find(x=>x.id===b.dataset.viewImage);if(x?.image_url)showImage(x.image_url);});
+ $('[data-view-image]').forEach(b=>b.onclick=()=>{const id=b.dataset.viewImage;if(bulkMode){if(selected.has(String(id)))selected.delete(String(id));else selected.add(String(id));draw();return;}const x=db.cards.find(x=>String(x.id)===String(id));if(x?.image_url)showImage(x.image_url);});
  hydrateOwnedImages($('#admin-content'));
  if(memoTab==='colors'&&mode==='memo')initColors();}
 function showImage(url){$('#dialog-host').innerHTML=`<div class="overlay" id="picture-modal"><img src="${esc(url)}" alt="拡大画像"><button class="overlay-close" id="picture-close">×</button></div>`;$('#picture-close').onclick=()=>$('#dialog-host').innerHTML='';$('#picture-modal').onclick=e=>{if(e.target.id==='picture-modal')$('#dialog-host').innerHTML='';};}
@@ -515,7 +505,54 @@ async function resizeOwnedImage(file){
  });
 }
 async function resize(file){if(!file.type.startsWith('image/'))throw Error('画像を指定してください');if(file.size>16*1024*1024)throw Error('画像は16MB以下にしてください');return new Promise((resolve,reject)=>{const r=new FileReader();r.onerror=()=>reject(Error('画像を読み込めません'));r.onload=()=>{const image=new Image();image.onerror=()=>reject(Error('画像形式が不正です'));image.onload=()=>{const canvas=document.createElement('canvas');const ratio=Math.min(1,900/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*ratio));canvas.height=Math.max(1,Math.round(image.height*ratio));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.76));};image.src=r.result;};r.readAsDataURL(file);});}
-async function remove(type,id){const list=db[type],idx=list.findIndex(x=>x.id===id);if(idx<0||!confirm('「'+list[idx].code+'」を削除しますか？'))return;const backup=JSON.stringify(db);list.splice(idx,1);if(type==='cards')db.lastCardsUpdated=new Date().toISOString();save();draw();}
+async function remove(type,id){
+ if(type!=='cards'||pendingWrites)return;
+ const card=db.cards.find(x=>String(x.id)===String(id));
+ if(!card||!confirm('「'+(card.code||'このフレカ')+'」を削除しますか？'))return;
+ pendingWrites++;updateLastSaved();
+ try{
+  await adminApi('delete',{id:card.id});
+  db.cards=db.cards.filter(x=>String(x.id)!==String(id));
+  selected.delete(String(id));
+  markChanged();draw();toast('削除しました');
+ }catch(error){alert('削除に失敗しました：'+error.message);}
+ finally{pendingWrites--;updateLastSaved();}
+}
+async function toggleVisibility(id){
+ if(pendingWrites)return;
+ const card=db.cards.find(x=>String(x.id)===String(id));
+ if(!card)return;
+ const next=card.visible===false;
+ pendingWrites++;updateLastSaved();
+ try{
+  await adminApi('visibility',{id:card.id,visible:String(next)});
+  card.visible=next;markChanged();draw();
+  toast(next?'公開しました':'非公開にしました');
+ }catch(error){alert('公開状態の変更に失敗しました：'+error.message);}
+ finally{pendingWrites--;updateLastSaved();}
+}
+async function removeSelected(){
+ if(!bulkMode||!selected.size||pendingWrites)return;
+ if(!confirm(selected.size+'件のフレカを削除しますか？'))return;
+ pendingWrites++;updateLastSaved();
+ const failures=[];
+ try{
+  for(const id of [...selected]){
+   try{
+    await adminApi('delete',{id});
+    db.cards=db.cards.filter(x=>String(x.id)!==String(id));
+    selected.delete(id);
+   }catch(error){failures.push(String(id)+': '+error.message);}
+  }
+  if(!failures.length){bulkMode=false;selected.clear();toast('削除しました');}
+  else alert('一部を削除できませんでした：'+failures.join('、'));
+  markChanged();draw();
+ }finally{pendingWrites--;updateLastSaved();}
+}
+function markChanged(){
+ db.lastCardsUpdated=new Date().toISOString();
+ db.lastSavedAt=db.lastCardsUpdated;
+}
 function initColors(){
  const pending=JSON.parse(JSON.stringify(db.colors));
  const get=c=>S.colorSpec(pending[c],DEFAULT_COLORS[c]);
@@ -542,11 +579,9 @@ function initColors(){
  });
  $('#save-colors').onclick=async()=>{
   for(const el of $$('[data-hex]'))if(!cleanColor(el.value)){toast('カラーコードは #RRGGBB で入力してください');el.focus();return;}
-  const backup=JSON.parse(JSON.stringify(db.colors));db.colors=pending;
+  db.colors=pending;
   const savedColors=JSON.parse(JSON.stringify(pending));
-  save().then(ok=>{
-   if(ok){try{localStorage.setItem('site_d_public_colors_v1',JSON.stringify({colors:savedColors,syncedAt:Date.now()}));}catch(_){}}
-  });
+  save().then(ok=>{if(ok)toast('このブラウザにカラー設定を保存しました');});
   S.theme('',db.colors);draw();
  };
 }
