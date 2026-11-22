@@ -411,7 +411,7 @@ function openCardForm(id=''){
   '<div class="row between dialog-heading"><h2 id="dialog-title">'+(single?'フレカを編集':'フレカを追加')+
   '</h2><button class="dialog-x" id="dialog-close" type="button" aria-label="閉じる">×</button></div>'+
   '<form id="card-form">'+
-  (single?'<p class="note">キャラ名とコーデ名を編集できます。</p>':
+  (single?(S.isMigrated()?'<p class="note">キャラ名・コーデ名・画像を編集できます。</p><label class="site-c-replace-image">画像を差し替える<input id="site-c-replace-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>':'<p class="note">キャラ名とコーデ名を編集できます。</p>'):
    '<div class="card-upload-zone" id="upload-zone" role="button" tabindex="0">'+
    '<span class="upload-symbol">＋</span><strong>画像を選択</strong>'+
    '<span class="upload-hint">またはここにドロップ</span></div>'+
@@ -448,6 +448,16 @@ function openCardForm(id=''){
    rows=rows.filter(x=>x!==row);
    paint();
   });
+ }
+ if(single&&S.isMigrated()){
+  $('#site-c-replace-file').onchange=event=>{
+   const file=event.target.files?.[0];if(!file)return;
+   if(!file.type.startsWith('image/')){toast('画像ファイルを選択してください');return;}
+   if(file.size>16*1024*1024){toast('画像は16MB以下にしてください');return;}
+   if(objectUrls.has(rows[0].image)){URL.revokeObjectURL(rows[0].image);objectUrls.delete(rows[0].image);}
+   const preview=URL.createObjectURL(file);objectUrls.add(preview);
+   rows[0].image=preview;rows[0].file=file;paint();
+  };
  }
  if(!single){
   const zone=$('#upload-zone');
@@ -488,6 +498,16 @@ function openCardForm(id=''){
     const row=valid[0];
     await adminApi('update',{id:old.id,chara:row.chara,code:row.code});
     old.code=row.code;old.chara=row.chara;
+    if(row.file&&S.isMigrated()){
+     button.textContent='画像を差し替え中…';
+     const dataUrl=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();reader.onerror=()=>reject(Error('画像を読み込めません'));
+      reader.onload=()=>resolve(String(reader.result||''));reader.readAsDataURL(row.file);
+     });
+     const image=await adminApi('replaceImage',{id:old.id,filename:row.file.name,
+       mimeType:row.file.type,data:dataUrl});
+     old.image_url=image.url;
+    }
     successes=1;
    }else{
     for(const [i,row] of valid.entries()){
@@ -527,6 +547,7 @@ function openCardForm(id=''){
    }
   }catch(error){
    alert('保存に失敗しました：'+error.message);
+   try{const state=await adminApi('admin');db.cards=state.cards;draw();}catch(_){}
   }finally{
    submitting=false;pendingWrites--;updateLastSaved();
    if(button.isConnected){button.disabled=false;button.textContent='保存';}
