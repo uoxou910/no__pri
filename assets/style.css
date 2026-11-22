@@ -932,3 +932,26 @@ body[data-page="edit"] .site-c-bulk-bar .btn {font-size:11px;padding:9px 11px;mi
  body[data-page="edit"] .site-c-bulk-bar {gap:6px;padding:10px 9px;}
  body[data-page="edit"] .site-c-bulk-bar .btn {font-size:10px;padding:8px 6px;}
 }
+
+/* Image replacement is shown only when Site C uses the migrated backend. */
+body[data-page="edit"] .site-c-replace-image {
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ padding:13px 16px;
+ margin:12px 0 18px;
+ border:1px solid #e6e1ea;
+ border-radius:10px;
+ background:#faf9fc;
+ color:#4c4554;
+ font-size:12px;
+ font-weight:650;
+}
+body[data-page="edit"] .site-c-replace-image input[type="file"] {
+ width:min(100%,240px);
+ font-size:11px;
+}
+@media(max-width:540px){
+ body[data-page="edit"] .site-c-replace-image {align-items:stretch;flex-direction:column;}
+}
