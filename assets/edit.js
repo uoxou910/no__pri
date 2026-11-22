@@ -391,87 +391,147 @@ function openForm(type,id=''){
  const backup=JSON.stringify(db);if(row)Object.assign(row,item);else source.push(item);
  save(isPlan?'upsertPlan':'save',isPlan?{plan:item}:{});closeForm();draw();};
 }
+// The Site C GAS creates a card on upload, then changes its labels via update.
+// Never use Site D's whole-database save on Site C.
 function openCardForm(id=''){
- const existing=db.cards.find(x=>x.id===id);
- const defaultChara=existing?.chara||filter||chars[0];
- let entries=existing?[{key:uuid(),id:existing.id,code:existing.code||'',chara:defaultChara,image:existing.image_url||''}]:[];
- const single=!!existing,demo=S.isDemo();
+ if(pendingWrites){toast('保存処理が完了してから操作してください');return;}
+ const old=db.cards.find(x=>String(x.id)===String(id));
+ const single=Boolean(old);
+ let rows=single?[{key:uuid(),id:old.id,code:old.code,chara:old.chara,image:old.image_url}]:[];
  let submitting=false;
- const previewUrls=new Set();
- const closeCard=()=>{for(const u of previewUrls)URL.revokeObjectURL(u);previewUrls.clear();closeForm();};
- const fileInput='<input id="card-files" type="file" accept="image/png,image/jpeg,image/webp,image/gif" '+(single?'':'multiple')+' hidden>'; 
- const urlMode='';
- $('#dialog-host').innerHTML=`<div class="dialog-shade" id="dialog-shade"><section class="dialog card-entry-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="row between dialog-heading"><h2 id="dialog-title">${single?'フレカを編集':'フレカを追加'}</h2><button class="dialog-x" id="dialog-close" type="button" aria-label="閉じる">×</button></div><form id="card-form"><div class="card-upload-zone" id="upload-zone" role="button" tabindex="0"><span class="upload-symbol">＋</span><strong>画像を選択</strong><span class="upload-hint">またはここにドロップ</span></div>${fileInput}${urlMode}<div id="upload-entries" class="upload-entries"></div><div class="dialog-actions ${single?'':'hidden'}" id="card-submit-actions"><button class="btn primary" type="submit">保存</button></div></form></section></div>`;
- const root=$('#dialog-host');
- const paint=()=>{
-  $('#upload-entries').innerHTML=entries.map((row,i)=>`<div class="upload-entry" data-entry="${esc(row.key)}"><div class="upload-thumb">${row.image?`<img src="${esc(row.image)}" alt="画像プレビュー">`:'<span>画像なし</span>'}</div><div class="upload-fields"><input data-code="${esc(row.key)}" maxlength="120" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" value="${esc(row.code)}" required><select data-chara="${esc(row.key)}" aria-label="${i+1}件目のマイキャラ">${chars.map(c=>`<option value="${esc(c)}" ${c===row.chara?'selected':''}>${esc(c)}</option>`).join('')}</select></div>${!single&&entries.length>1?`<button type="button" data-remove-entry="${esc(row.key)}" class="upload-remove" aria-label="${i+1}件目を削除">×</button>`:''}</div>`).join('');
-  $('#card-submit-actions').classList.toggle('hidden',entries.length===0);
-  $$('[data-code]',root).forEach(el=>el.addEventListener('input',()=>{const row=entries.find(x=>x.key===el.dataset.code);if(row)row.code=el.value;}));
-  $$('[data-chara]',root).forEach(el=>el.addEventListener('change',()=>{const row=entries.find(x=>x.key===el.dataset.chara);if(row)row.chara=el.value;}));
-  $$('[data-remove-entry]',root).forEach(b=>b.onclick=()=>{entries=entries.filter(x=>x.key!==b.dataset.removeEntry);paint();});
+ const objectUrls=new Set();
+ const closeCard=()=>{
+  if(submitting)return;
+  for(const url of objectUrls)URL.revokeObjectURL(url);
+  objectUrls.clear();
+  closeForm();
  };
- const addFiles=async files=>{
-  const list=[...files];if(!list.length)return;
-  
-  const zone=$('#upload-zone');zone.classList.add('upload-busy');
-  for(const file of list){try{
-   if(!['image/png','image/jpeg','image/webp','image/gif'].includes(file.type))throw Error('PNG・JPEG・WebP・GIFを選択してください');
-   if(file.size>8*1024*1024)throw Error('画像は8MB以下にしてください');
-   const img=demo?await resize(file):URL.createObjectURL(file);
-   if(!demo)previewUrls.add(img);
-   if(single){entries[0].image=img;entries[0].file=demo?null:file;}
-   else entries.push({key:uuid(),id:'',code:'',chara:filter||chars[0],image:img,file:demo?null:file});
-  }catch(err){toast(err.message);}}
-  if(zone.isConnected)zone.classList.remove('upload-busy');
-  paint();$('#upload-entries [data-code]')?.focus();
- };
- $('#dialog-close').onclick=closeCard;
- $('#dialog-shade').onclick=e=>{if(e.target.id==='dialog-shade')closeCard();};
- {
-  $('#upload-zone').onclick=()=>$('#card-files').click();
-  $('#upload-zone').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#card-files').click();}};
-  $('#card-files').onchange=e=>{addFiles(e.target.files);e.target.value='';};
-  const zone=$('#upload-zone');
-  zone.ondragover=e=>{e.preventDefault();zone.classList.add('dragging');};
-  zone.ondragleave=()=>zone.classList.remove('dragging');
-  zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');addFiles(e.dataTransfer.files);};
+ const host=$('#dialog-host');
+ host.innerHTML='<div class="dialog-shade" id="dialog-shade">'+
+  '<section class="dialog card-entry-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">'+
+  '<div class="row between dialog-heading"><h2 id="dialog-title">'+(single?'フレカを編集':'フレカを追加')+
+  '</h2><button class="dialog-x" id="dialog-close" type="button" aria-label="閉じる">×</button></div>'+
+  '<form id="card-form">'+
+  (single?'<p class="note">キャラ名とコーデ名を編集できます。</p>':
+   '<div class="card-upload-zone" id="upload-zone" role="button" tabindex="0">'+
+   '<span class="upload-symbol">＋</span><strong>画像を選択</strong>'+
+   '<span class="upload-hint">またはここにドロップ</span></div>'+
+   '<input type="file" id="card-files" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>')+
+  '<div id="upload-entries" class="upload-entries"></div>'+
+  '<div class="dialog-actions" id="card-submit-actions">'+
+  '<button class="btn primary" type="submit">保存</button></div>'+
+  '</form></section></div>';
+ function paint(){
+  const area=$('#upload-entries');
+  area.innerHTML=rows.map((row,i)=>{
+   const img=row.image?'<img src="'+esc(row.image)+'" alt="画像プレビュー">':'<span>画像なし</span>';
+   return '<div class="upload-entry" data-entry="'+esc(row.key)+'">'+
+    '<div class="upload-thumb">'+img+'</div>'+
+    '<div class="upload-fields">'+
+    '<input type="text" data-code="'+esc(row.key)+'" value="'+esc(row.code)+'" maxlength="120" placeholder="コーデ名" aria-label="'+(i+1)+'件目のコーデ名" required>'+
+    '<select data-chara="'+esc(row.key)+'" aria-label="'+(i+1)+'件目のキャラ名">'+
+    '<option value="" '+(!row.chara?'selected':'')+' disabled>キャラ名を選択</option>'+
+    chars.map(c=>'<option value="'+esc(c)+'" '+(c===row.chara?'selected':'')+'>'+esc(c)+'</option>').join('')+
+    '</select></div>'+
+    (!single?'<button type="button" class="upload-remove" data-remove-entry="'+esc(row.key)+'" aria-label="画像を一覧から外す">×</button>':'')+
+    '</div>';
+  }).join('');
+  $('#card-submit-actions').classList.toggle('hidden',rows.length===0);
+  $$('[data-code]',host).forEach(input=>input.addEventListener('input',()=>{
+   const row=rows.find(x=>x.key===input.dataset.code);if(row)row.code=input.value;
+  }));
+  $$('[data-chara]',host).forEach(input=>input.addEventListener('change',()=>{
+   const row=rows.find(x=>x.key===input.dataset.chara);if(row)row.chara=input.value;
+  }));
+  $$('[data-remove-entry]',host).forEach(button=>button.onclick=()=>{
+   const row=rows.find(x=>x.key===button.dataset.removeEntry);
+   if(row&&objectUrls.has(row.image)){URL.revokeObjectURL(row.image);objectUrls.delete(row.image);}
+   rows=rows.filter(x=>x!==row);
+   paint();
+  });
  }
- $('#card-form').onsubmit=async e=>{e.preventDefault();if(busy||submitting)return;
-  const valid=entries.map(x=>({...x,code:x.code.trim()}));
+ if(!single){
+  const zone=$('#upload-zone');
+  const addFiles=files=>{
+   for(const file of [...files]){
+    if(!file.type.startsWith('image/')){toast('画像ファイルを選択してください');continue;}
+    const url=URL.createObjectURL(file);
+    objectUrls.add(url);
+    rows.push({key:uuid(),id:'',code:'',chara:filter||'',image:url,file});
+   }
+   paint();
+   $('#upload-entries [data-code]')?.focus();
+  };
+  zone.onclick=()=>$('#card-files').click();
+  zone.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();$('#card-files').click();}};
+  zone.ondragover=event=>{event.preventDefault();zone.classList.add('dragging');};
+  zone.ondragleave=()=>zone.classList.remove('dragging');
+  zone.ondrop=event=>{event.preventDefault();zone.classList.remove('dragging');addFiles(event.dataTransfer.files);};
+  $('#card-files').onchange=event=>{addFiles(event.target.files);event.target.value='';};
+ }
+ $('#dialog-close').onclick=closeCard;
+ $('#dialog-shade').onclick=event=>{if(event.target.id==='dialog-shade')closeCard();};
+ $('#card-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(submitting||pendingWrites)return;
+  const valid=rows.map(x=>({...x,code:String(x.code||'').trim()}));
   if(!valid.length){toast('画像を追加してください');return;}
-  if(valid.some(x=>!x.code||!chars.includes(x.chara))){toast('各コーデの名前とマイキャラを入力してください');return;}
-  submitting=true;
+  if(valid.some(x=>!x.code||!chars.includes(x.chara))){
+   toast('コーデ名とキャラ名を指定してください');return;
+  }
+  submitting=true;pendingWrites++;updateLastSaved();
   const button=$('#card-submit-actions button[type="submit"]');
   button.disabled=true;
-  const buttonLabel=button.textContent;
+  const errorList=[];
+  let successes=0;
   try{
-   if(!demo){
-    let n=0;const total=valid.filter(x=>x.file).length;
-    for(const row of valid){
-     if(!row.file)continue;
-     button.textContent=`画像をアップロード中 ${++n}/${total}`;
-     const raw=await new Promise((resolve,reject)=>{
-      const reader=new FileReader();reader.onerror=()=>reject(Error('画像を読み込めませんでした'));
-      reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
-      reader.readAsDataURL(row.file);
-     });
-     const result=await adminApi('uploadImage',{filename:row.file.name,mimeType:row.file.type,base64:raw});
-     if(!result?.url||!/^https:\/\//.test(result.url))throw Error('画像URLが取得できませんでした');
-     row.image=result.url;
-     const original=entries.find(x=>x.key===row.key);
-     if(original){original.image=row.image;original.file=null;}
+   if(single){
+    const row=valid[0];
+    await adminApi('update',{id:old.id,chara:row.chara,code:row.code});
+    old.code=row.code;old.chara=row.chara;
+    successes=1;
+   }else{
+    for(const [i,row] of valid.entries()){
+     button.textContent='アップロード中 '+(i+1)+'/'+valid.length;
+     try{
+      const dataUrl=await new Promise((resolve,reject)=>{
+       const reader=new FileReader();
+       reader.onerror=()=>reject(Error('ファイルを読み込めません'));
+       reader.onload=()=>resolve(String(reader.result||''));
+       reader.readAsDataURL(row.file);
+      });
+      const added=await adminApi('upload',{
+       filename:row.file.name,mimeType:row.file.type||'image/png',data:dataUrl
+      });
+      db.cards.unshift(added);
+      // The upload already exists remotely. Keep it in the list if update fails.
+      await adminApi('update',{id:added.id,chara:row.chara,code:row.code});
+      added.chara=row.chara;added.code=row.code;
+      successes++;
+     }catch(error){errorList.push((i+1)+'件目: '+error.message);}
     }
    }
-   button.textContent='保存中';
-   const snapshot=JSON.stringify(db),now=new Date().toISOString();
-   for(const row of valid){
-    const card={id:row.id||uuid(),code:row.code,chara:row.chara,image_url:row.image,updated_at:now};
-    const old=db.cards.find(c=>c.id===row.id);if(old)Object.assign(old,card);else db.cards.push(card);
+   markChanged();draw();
+   if(!errorList.length){
+    submitting=false;
+    closeCard();
+    toast(single?'保存しました':successes+'件追加しました');
+   }else{
+    alert('一部の処理に失敗しました。保存済みのフレカは一覧から確認してください。\n'+errorList.join('\n'));
+    // Re-fetch cards because an uploaded image may have been saved even if labels failed.
+    try{
+     const state=await adminApi('admin');
+     db.cards=state.cards;
+     draw();
+    }catch(_){}
+    submitting=false;closeCard();
    }
-   db.lastCardsUpdated=now;
-   save();closeCard();draw();
-  }catch(err){toast('画像アップロード失敗: '+err.message);}
-  finally{if(button.isConnected){button.disabled=false;button.textContent=buttonLabel;}submitting=false;}
+  }catch(error){
+   alert('保存に失敗しました：'+error.message);
+  }finally{
+   submitting=false;pendingWrites--;updateLastSaved();
+   if(button.isConnected){button.disabled=false;button.textContent='保存';}
+  }
  };
  paint();
 }
