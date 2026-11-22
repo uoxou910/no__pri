@@ -200,5 +200,5 @@ function buildCharacterNav(onSelect,{mobile=true,colors=DEFAULT_COLORS}={}){
   return {set(c){current=c;update();},updateColors(c){colors=c;update();}};
  }};}
 function toast(msg){let n=$('#toast');if(!n){n=document.createElement('div');n.id='toast';n.className='toast';document.body.appendChild(n);}n.textContent=msg;n.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>n.classList.remove('show'),2300);}
-window.SiteD={colorSpec,themeBackground,themeMain,colorInfo,characterStyle,groups,chars,DEFAULT_COLORS,$,$,esc,norm,uuid,cleanColor,validChara,base,sanitize,isDemo,api,request,readColors,saveColors,normalizeCard,cardImage,theme,buildCharacterNav,toast,isMigrated:()=>C.backendMode==='migrated'};
+window.SiteD={colorSpec,themeBackground,themeMain,colorInfo,characterStyle,groups,chars,DEFAULT_COLORS,$,$$,esc,norm,uuid,cleanColor,validChara,base,sanitize,isDemo,api,request,readColors,saveColors,normalizeCard,cardImage,theme,buildCharacterNav,toast,isMigrated:()=>C.backendMode==='migrated'};
 })();
