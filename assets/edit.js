@@ -217,6 +217,7 @@ function updateLastSaved(){
 // Site C's GAS has no whole-database save action. Only color settings are local.
 async function save(){
  try{
+  if(S.isMigrated())await adminApi('saveColors',{colors:db.colors});
   db.colors=S.saveColors(db.colors);
   db.lastSavedAt=new Date().toISOString();
   updateLastSaved();
