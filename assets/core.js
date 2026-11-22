@@ -80,7 +80,32 @@ function sanitize(obj){
  }
  return state;
 }
+async function modernApi(action,payload={},token=''){
+ if(isDemo())throw Error('サイトCのGASが設定されていません');
+ let response;
+ if(action==='public'){
+  response=await fetch(C.gasUrl+(C.gasUrl.includes('?')?'&':'?')+'action=public&t='+Date.now(),
+   {cache:'no-store',redirect:'follow'});
+ }else{
+  response=await fetch(C.gasUrl,{
+   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+   body:JSON.stringify({action,...payload,token}),redirect:'follow'
+  });
+ }
+ if(!response.ok)throw Error('通信エラー: '+response.status);
+ const result=await response.json();
+ if(result.ok===false)throw Error(result.error||'GAS処理に失敗しました');
+ const data=result.data??result;
+ if(action==='public'){
+  const list=cardArray(data.cards).filter(x=>x.visible!==false);
+  return {...data,cards:list,colors:data.colors||readColors()};
+ }
+ if(action==='admin')return sanitize(data);
+ if(action==='login'&&data.admin)return {...data,admin:sanitize(data.admin)};
+ return data;
+}
 async function api(action,payload={},token=''){
+ if(C.backendMode==='migrated')return modernApi(action,payload,token);
  if(action==='public'){
   const fresh=await request('list');
   const items=Array.isArray(fresh)?fresh:fresh.cards;
@@ -175,5 +200,5 @@ function buildCharacterNav(onSelect,{mobile=true,colors=DEFAULT_COLORS}={}){
   return {set(c){current=c;update();},updateColors(c){colors=c;update();}};
  }};}
 function toast(msg){let n=$('#toast');if(!n){n=document.createElement('div');n.id='toast';n.className='toast';document.body.appendChild(n);}n.textContent=msg;n.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>n.classList.remove('show'),2300);}
-window.SiteD={colorSpec,themeBackground,themeMain,colorInfo,characterStyle,groups,chars,DEFAULT_COLORS,$,$,esc,norm,uuid,cleanColor,validChara,base,sanitize,isDemo,api,request,readColors,saveColors,normalizeCard,cardImage,theme,buildCharacterNav,toast};
+window.SiteD={colorSpec,themeBackground,themeMain,colorInfo,characterStyle,groups,chars,DEFAULT_COLORS,$,$,esc,norm,uuid,cleanColor,validChara,base,sanitize,isDemo,api,request,readColors,saveColors,normalizeCard,cardImage,theme,buildCharacterNav,toast,isMigrated:()=>C.backendMode==='migrated'};
 })();
