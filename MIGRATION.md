@@ -4,11 +4,11 @@
 
 ## 現在の状態
 
-- 元のサイトC用GASは従来どおり稼働し、`assets/config.js` の `backendMode: "legacy"` で接続しています。
+- サイトCは新GASへ接続先を切り替え済みです（`assets/config.js` の `backendMode: "migrated"`）。旧GAS・元のシートはバックアップとして維持しています。
 - データ80件を含む元スプレッドシートは編集していません。
 - 元のサイトC用スプレッドシートを複製した**移行用コピー**に、D方式の `siteD_cards` と `siteD_colors` を作成済みです。元の `cards` タブも残っています。
 - ID、キャラ名、コーデ名、画像URL、公開状態、ファイルID、日時を80件すべて照合しています。
-- 新GASはデプロイされていません。デプロイ後に接続先を切り替えます。
+- 新GASの `/exec` URLを受領し、GitHub側の設定を反映済みです。Apps Scriptの実行状態と認証・保存の実アクセス検証は未実施です。
 
 ## GASのデプロイ
 
@@ -33,7 +33,7 @@ window.FRECA_CONFIG = {
 };
 ```
 
-現在の `legacy` を書き換えるまでは、旧サイトCのカードはこれまでのGASから読み込まれます。
+この設定は2026-11-23に `migrated` へ変更済みです。旧GASに戻す場合は旧URLと `backendMode: "legacy"` を同時に戻してください。
 
 ## 新GASで利用可能になる機能
 
