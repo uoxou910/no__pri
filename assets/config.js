@@ -1,7 +1,6 @@
 window.FRECA_CONFIG = {
-  gasUrl: "https://script.google.com/macros/s/AKfycbwsSFOisYDbw_EDeUMO5cLtffYyJ4P2knOL-8K9LAkrXpkS7EyGmXa9retk5x-qcVTF_Q/exec",
+  gasUrl: "https://script.google.com/macros/s/AKfycbyCrQnl3Ik6Kt8kHKEs3pmecTn0OHWeJimSDXoE18BsqiR1AUPxO52gxVKOCXdkrt5C/exec",
   appName: "フレカ置き場",
-  // Keep current GAS until the new migration backend is deployed.
-  // Once installed, set backendMode to "migrated" and replace gasUrl.
-  backendMode: "legacy"
+  // Site C migrated to its own D-compatible GAS backend.
+  backendMode: "migrated"
 };
