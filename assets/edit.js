@@ -659,10 +659,12 @@ function initColors(){
  });
  $('#save-colors').onclick=async()=>{
   for(const el of $$('[data-hex]'))if(!cleanColor(el.value)){toast('カラーコードは #RRGGBB で入力してください');el.focus();return;}
+  const beforeColors=JSON.parse(JSON.stringify(db.colors));
   db.colors=pending;
-  const savedColors=JSON.parse(JSON.stringify(pending));
-  save().then(ok=>{if(ok)toast('このブラウザにカラー設定を保存しました');});
   S.theme('',db.colors);draw();
+  const ok=await save();
+  if(ok)toast(S.isMigrated()?'カラー設定を保存しました':'このブラウザにカラー設定を保存しました');
+  else{db.colors=beforeColors;S.theme('',db.colors);draw();}
  };
 }
 if(S.isDemo() && /^https?:$/.test(location.protocol) && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
