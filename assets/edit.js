@@ -293,15 +293,15 @@ function draw(preserveFilter=false){
  $$('[data-edit-group]').forEach(b=>b.onclick=()=>openOwnershipForm(b.dataset.editGroup));
  $$('[data-remove-group]').forEach(b=>b.onclick=()=>removeOwnershipGroup(b.dataset.removeGroup));
  $$('[data-edit]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.edit.split(':');openForm(type,id);});
- $('[data-remove]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.remove.split(':');remove(type,id);});
- $('[data-visibility]').forEach(b=>b.onclick=()=>toggleVisibility(b.dataset.visibility));
+ $$('[data-remove]').forEach(b=>b.onclick=()=>{const [type,id]=b.dataset.remove.split(':');remove(type,id);});
+ $$('[data-visibility]').forEach(b=>b.onclick=()=>toggleVisibility(b.dataset.visibility));
  $$('[data-check]').forEach(b=>b.onchange=()=>{
   const x=db.plans.find(x=>x.id===b.dataset.check);if(!x)return;
   x.done=b.checked;
   b.closest('.plan-item')?.classList.add('just-checked');
   save('setPlanDone',{id:x.id,done:x.done});
  });
- $('[data-view-image]').forEach(b=>b.onclick=()=>{const id=b.dataset.viewImage;if(bulkMode){if(selected.has(String(id)))selected.delete(String(id));else selected.add(String(id));draw();return;}const x=db.cards.find(x=>String(x.id)===String(id));if(x?.image_url)showImage(x.image_url);});
+ $$('[data-view-image]').forEach(b=>b.onclick=()=>{const id=b.dataset.viewImage;if(bulkMode){if(selected.has(String(id)))selected.delete(String(id));else selected.add(String(id));draw();return;}const x=db.cards.find(x=>String(x.id)===String(id));if(x?.image_url)showImage(x.image_url);});
  hydrateOwnedImages($('#admin-content'));
  if(memoTab==='colors'&&mode==='memo')initColors();}
 function showImage(url){$('#dialog-host').innerHTML=`<div class="overlay" id="picture-modal"><img src="${esc(url)}" alt="拡大画像"><button class="overlay-close" id="picture-close">×</button></div>`;$('#picture-close').onclick=()=>$('#dialog-host').innerHTML='';$('#picture-modal').onclick=e=>{if(e.target.id==='picture-modal')$('#dialog-host').innerHTML='';};}
