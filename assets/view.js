@@ -91,7 +91,17 @@ grid.addEventListener('click',event=>{
 $('#query').addEventListener('input',e=>{query=e.target.value;render();});$('#close').onclick=()=>$('#overlay').classList.add('hidden');$('#overlay').onclick=e=>{if(e.target.id==='overlay')$('#overlay').classList.add('hidden');};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#overlay').classList.add('hidden')});
 try{
  const d=await api('public');
- cards=(Array.isArray(d.cards)?d.cards:[]).filter(x=>x&&typeof x.code==='string');
+ // Show newest registered cards first; use update time only when creation time is absent.
+ // For legacy cards without timestamps, retain the reverse of the original order.
+ cards=(Array.isArray(d.cards)?d.cards:[])
+  .filter(x=>x&&typeof x.code==='string')
+  .map((card,index)=>({card,index,time:Date.parse(card.created_at||card.updated_at||'')}))
+  .sort((a,b)=>{
+   const at=Number.isFinite(a.time)?a.time:0;
+   const bt=Number.isFinite(b.time)?b.time:0;
+   return bt-at||b.index-a.index;
+  })
+  .map(entry=>entry.card);
  if(d.colors&&typeof d.colors==='object'){
   const fresh={...S.DEFAULT_COLORS,...d.colors};
   if(JSON.stringify(colors)!==JSON.stringify(fresh)){
