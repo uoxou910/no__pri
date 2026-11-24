@@ -1004,3 +1004,26 @@ body[data-page="view"] .search-dock > .search:focus-within {
     backdrop-filter:none;
   }
 }
+
+/* Admin gallery: use the same floating search-field surface as the public gallery.
+   Keep its existing sticky positioning, dimensions and margins. */
+body[data-page="edit"] .admin-shell .search {
+  background:rgba(250,249,252,.86);
+  border:0;
+  border-radius:var(--radius-medium);
+  box-shadow:0 8px 26px rgba(39,32,49,.14),0 2px 7px rgba(39,32,49,.05);
+  -webkit-backdrop-filter:blur(17px) saturate(1.15);
+  backdrop-filter:blur(17px) saturate(1.15);
+}
+body[data-page="edit"] .admin-shell .search:focus-within {
+  background:rgba(250,248,253,.92);
+  box-shadow:0 9px 28px rgba(39,32,49,.17),inset 0 -2px #777086;
+}
+@media (prefers-reduced-transparency:reduce) {
+  body[data-page="edit"] .admin-shell .search,
+  body[data-page="edit"] .admin-shell .search:focus-within {
+    background:rgb(250,249,252);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+}
