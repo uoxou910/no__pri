@@ -973,3 +973,34 @@ body[data-page="edit"] .admin-card-grid .admin-sub {
 body[data-page="edit"] .admin-card-grid .admin-card-body > .row {
  margin-top:auto;
 }
+
+/* Public gallery: only the sticky search field floats above scrolling cards. */
+body[data-page="view"] .search-dock {
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+  pointer-events:none;
+}
+body[data-page="view"] .search-dock > .search {
+  position:relative;
+  pointer-events:auto;
+  background:rgba(250,249,252,.86);
+  border-radius:var(--radius-medium);
+  box-shadow:0 8px 26px rgba(39,32,49,.14),0 2px 7px rgba(39,32,49,.05);
+  -webkit-backdrop-filter:blur(17px) saturate(1.15);
+  backdrop-filter:blur(17px) saturate(1.15);
+}
+body[data-page="view"] .search-dock > .search:focus-within {
+  background:rgba(250,248,253,.92);
+  box-shadow:0 9px 28px rgba(39,32,49,.17),inset 0 -2px #777086;
+}
+@media (prefers-reduced-transparency:reduce) {
+  body[data-page="view"] .search-dock > .search,
+  body[data-page="view"] .search-dock > .search:focus-within {
+    background:rgb(250,249,252);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+}
